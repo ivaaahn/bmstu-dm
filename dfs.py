@@ -1,0 +1,108 @@
+#!/usr/bin/python3
+
+import numpy as np
+from math import inf
+
+
+GREEN = "\x1b[32m"
+RESET = "\x1b[0m"
+YELLOW = "\x1b[33m"
+
+
+
+# Считываем матрицу
+matrix = np.loadtxt('data/dfs', dtype=int)
+# start = int(input(f'Enter index of start vertex, please [0, {len(matrix[0]) - 1}]: '))
+
+# Размер считанной матрицы
+size = len(matrix[0])
+
+# Объявим счетчик вершин
+vertex_count = 0
+
+# Начальные установки: множества древесных и обратных дуг пусты
+wood_edges = []
+back_edges = []
+
+# Начальные установки: множество фундаментальных циклов и стек пусты
+fund_cycles = []
+stack = []
+
+# Дефолтная нумерация вершин для удобства
+vertices = [vert for vert in range(size)]
+
+# Т. н. Д-номера, которые получат вершины после обхода
+d_numbers = [None for _ in range(size)]
+
+# Метки для новых вершин. Изначально - все новые.
+new = [True for _ in range(size)]
+
+# Для самопроверки сформируем массив лидеров со списками смежности
+adj_list = []
+for i in range(size):
+    adj_list.append([j for j in range(size) if matrix[i][j] > 0])
+
+
+# Основная функция, которая получает на вход очередную вершину
+def dfs(v):
+    global vertex_count # используем глобальный счетчик
+
+    # Предобработка полученной вершины
+    new[v] = False              # помечаем полученную вершину посещенной
+    d_numbers[v] = vertex_count # присваиваем полученной вершине номер
+    vertex_count += 1           # Увеличиваем счетчик
+    stack.append(v)             # Пихаем вершину в стек
+
+    print(YELLOW + f'Стек: {stack}' + RESET)
+
+
+    # Основная обработка вершины
+    # Перебираем все вершины из списка смежности.
+    for w in adj_list[v]:
+        # Если данную вершину посещаем впервые, то ребро идет в древесное
+        # Продолжаем поиск к глубину. Запускаем от текущей вершины
+        if new[w]:
+            wood_edges.append(sorted([v, w]))
+            print(f'({v}, {w}) -> Древесные')
+            dfs(w)
+        # Если вершину уже посещали то смотрим на классификацию вершины
+        # Если она не классифицирована, то классифицируем.
+        elif sorted([v, w]) not in wood_edges and sorted([v, w]) not in back_edges:
+            # Добавлям вершину в обратные ребра
+            back_edges.append(sorted([v, w]))
+            print(f'({v}, {w}) -> Обратные')
+
+            # Вспоминаем, про фунд. циклы. Формируем цикл так:
+            # Читаем стек с верхушки до предыдущей отметки данной вершины
+            curr_circle = [i for i in range(stack.index(v), stack.index(w) - 1, -1)]
+            curr_circle.sort()
+
+            # Добавляем сформированный цикл в мн-во фундаментальных
+            print(GREEN + f'+ цикл: {curr_circle}' + RESET)
+            fund_cycles.append(curr_circle)
+    
+    # После окончания обработки списка смежности вершины выкидываем вершину из стека.
+    stack.pop()
+    print(YELLOW + f'Стек: {stack}' + RESET)
+
+
+
+# Основной (верхний цикл).
+# Перебираем все вершины до тех пор, пока остаются непосещенные
+for v in vertices:
+    while True in new:
+        dfs(v)
+
+
+if len(back_edges) == len(fund_cycles):
+
+    print(f'Списки смежности:\t {adj_list}')
+    print(f'Древесные  ребра:\t {wood_edges}')
+    print(f'Обратные   ребра:\t {back_edges}')
+    print(f'Фундамент. циклы:\t {fund_cycles}')
+    print(f'Нумерация вершин:\t {d_numbers}')
+    print(f'Циклический ранг:\t {len(back_edges)}')
+    print(f'Коциклич.   ранг:\t {len(wood_edges)}')
+
+else:
+    print("Упс :( Произошла ошибка")
